@@ -588,17 +588,17 @@ export default function TypingPractice() {
   }, [text.length, userInput.length]);
 
   // Calculate estimated time remaining
-  const calculateEstimatedTimeRemaining = useCallback(() => {
-    if (!startTime || userInput.length === 0) return null;
+  // const calculateEstimatedTimeRemaining = useCallback(() => {
+  //   if (!startTime || userInput.length === 0) return null;
     
-    const elapsedTime = Date.now() - startTime;
-    const progress = userInput.length / text.length;
-    if (progress === 0) return null;
+  //   const elapsedTime = Date.now() - startTime;
+  //   const progress = userInput.length / text.length;
+  //   if (progress === 0) return null;
     
-    const estimatedTotalTime = elapsedTime / progress;
-    const remainingTime = estimatedTotalTime - elapsedTime;
-    return Math.round(remainingTime / 1000); // Convert to seconds
-  }, [startTime, text.length, userInput.length]);
+  //   const estimatedTotalTime = elapsedTime / progress;
+  //   const remainingTime = estimatedTotalTime - elapsedTime;
+  //   return Math.round(remainingTime / 1000); // Convert to seconds
+  // }, [startTime, text.length, userInput.length]);
 
   // Update progress and estimated time
   useEffect(() => {
