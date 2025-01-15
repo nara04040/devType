@@ -8,6 +8,8 @@ import { CodeToken, CodeExample, Difficulty, ProgrammingLanguage, TypingStats } 
 import { examples } from '@/lib/examples'
 import { motion, AnimatePresence } from 'framer-motion';
 import ResultScreen from '@/components/ui/result/ResultScreen'
+import SettingsPanel from '@/components/ui/settings/SettingsPanel'
+import { soundManager } from '@/lib/utils/sound';
 
 // 특수문자 변환 함수
 const renderSpecialChar = (char: string) => {
@@ -67,6 +69,9 @@ export default function TypingPractice() {
   const [showResult, setShowResult] = useState(false);
   const [completedExamples, setCompletedExamples] = useState<TypingStats[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [fontSize, setFontSize] = useState<number>(16);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [volume, setVolume] = useState<number>(50);
 
   // Filter examples by difficulty and language
   useEffect(() => {
@@ -221,6 +226,9 @@ export default function TypingPractice() {
 
   // Handle example completion
   const handleExampleCompletion = useCallback(() => {
+    if (soundManager && soundEnabled) {
+      soundManager.playComplete();
+    }
     if (checkCompletionCriteria()) {
       setEndTime(Date.now());
       setTransitionState('completed');
@@ -250,15 +258,13 @@ export default function TypingPractice() {
       }
 
       setShowCompletionMessage(true);
-      setTimeout(() => {
-        setShowCompletionMessage(false);
-        resetPractice();
-        setCurrentExampleIndex(prevIndex => (prevIndex + 1) % filteredExamples.length);
-      }, 3000);
     }
-  }, [checkCompletionCriteria, calculateRealtimeWPM, accuracy, elapsedTime, totalKeystrokes, correctKeystrokes, currentExample.id]);
+  }, [checkCompletionCriteria, calculateRealtimeWPM, accuracy, elapsedTime, totalKeystrokes, correctKeystrokes, currentExample.id, soundEnabled, completedExamples]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // 완료 메시지가 표시 중일 때는 입력 무시
+    if (showCompletionMessage) return;
+    
     const input = e.target.value;
     const prevInput = userInput;
     setUserInput(input);
@@ -444,22 +450,53 @@ export default function TypingPractice() {
   };
 
   // Tab 키 이벤트 처리
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter 키 처리 추가
-    if (e.key === 'Enter' && userInput === text) {
-      e.preventDefault();
-      handleExampleCompletion();
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 완료 메시지가 표시 중일 때는 Enter만 처리
+    if (showCompletionMessage) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleNextExample();
+      }
       return;
     }
 
-    if (e.key === 'Tab') {
-      e.preventDefault();
+    // 입력 길이가 예제 텍스트 길이를 초과하면 추가 입력 방지
+    if (userInput.length >= text.length && event.key !== 'Enter') {
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      // 예제가 완료되었고 정확도가 기준을 충족하면 완료 처리
+      if (userInput === text) {
+        handleExampleCompletion();
+        return;
+      }
+      // 일반적인 Enter 키 입력 처리
+      const newChar = '\n';
+      const expectedChar = text[userInput.length];
+      if (newChar === expectedChar) {
+        setUserInput(prev => prev + newChar);
+        if (soundManager && soundEnabled) {
+          soundManager.playKeyPress();
+        }
+      } else {
+        if (soundManager && soundEnabled) {
+          soundManager.playError();
+        }
+      }
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
       
-      const cursorPosition = (e.currentTarget as HTMLTextAreaElement).selectionStart || 0;
+      const cursorPosition = (event.currentTarget as HTMLTextAreaElement).selectionStart || 0;
       const expectedChar = text[cursorPosition];
       
-      // 공백 2칸을 삽입
-      const tabSpaces = '  '; // 2칸 공백
+      // 2칸 공백으로 탭 처리
+      const tabSpaces = '  ';
       const newValue = userInput.slice(0, cursorPosition) + tabSpaces + userInput.slice(cursorPosition);
       setUserInput(newValue);
 
@@ -473,8 +510,31 @@ export default function TypingPractice() {
       }).length;
       
       setAccuracy(Math.round((correctChars / newValue.length) * 100) || 100);
+
+      // 소리 효과
+      if (soundManager && soundEnabled) {
+        if (expectedChar === '\t') {
+          soundManager.playKeyPress();
+        } else {
+          soundManager.playError();
+        }
+      }
+      return;
     }
-  };
+
+    if (event.key.length === 1) {
+      const expectedChar = text[userInput.length];
+      if (event.key === expectedChar) {
+        if (soundManager && soundEnabled) {
+          soundManager.playKeyPress();
+        }
+      } else {
+        if (soundManager && soundEnabled) {
+          soundManager.playError();
+        }
+      }
+    }
+  }, [userInput, text, soundEnabled, handleExampleCompletion, showCompletionMessage]);
 
   // 줄 번호 렌더링 컴포넌트
   const LineNumbers = ({ text, getCurrentLine }: { text: string; getCurrentLine: () => number }) => {
@@ -509,7 +569,7 @@ export default function TypingPractice() {
   // Calculate progress percentage
   const calculateProgress = useCallback(() => {
     const totalLength = text.length;
-    const currentLength = userInput.length;
+    const currentLength = Math.min(userInput.length, totalLength); // 진행률이 100%를 초과하지 않도록 제한
     return Math.round((currentLength / totalLength) * 100);
   }, [text.length, userInput.length]);
 
@@ -563,6 +623,78 @@ export default function TypingPractice() {
       return () => clearTimeout(transitionTimer);
     }
   }, [showCompletionMessage, currentExampleIndex, filteredExamples]);
+
+  // Load settings from localStorage
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('typingSettings');
+    if (savedSettings) {
+      const { fontSize: savedFontSize, soundEnabled: savedSoundEnabled, volume: savedVolume } = JSON.parse(savedSettings);
+      setFontSize(savedFontSize);
+      setSoundEnabled(savedSoundEnabled);
+      setVolume(savedVolume);
+    }
+  }, []);
+
+  // Save settings to localStorage
+  const saveSettings = useCallback(() => {
+    localStorage.setItem('typingSettings', JSON.stringify({
+      fontSize,
+      soundEnabled,
+      volume
+    }));
+  }, [fontSize, soundEnabled, volume]);
+
+  // Update settings
+  useEffect(() => {
+    saveSettings();
+  }, [fontSize, soundEnabled, volume, saveSettings]);
+
+  // Handle settings changes
+  const handleFontSizeChange = (value: number) => {
+    setFontSize(value);
+  };
+
+  const handleSoundEnabledChange = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+  };
+
+  const handleVolumeChange = (value: number) => {
+    setVolume(value);
+  };
+
+  // Add font size style to code display
+  const codeStyle = {
+    fontSize: `${fontSize}px`,
+    lineHeight: '1.5',
+    fontFamily: 'var(--font-geist-mono)',
+  };
+
+  // Update sound settings
+  useEffect(() => {
+    if (soundManager) {
+      soundManager.setEnabled(soundEnabled);
+      soundManager.setVolume(volume);
+    }
+  }, [soundEnabled, volume]);
+
+  // 다음 예제로 이동하는 함수
+  const handleNextExample = useCallback(() => {
+    const nextIndex = (currentExampleIndex + 1) % filteredExamples.length;
+    const nextExample = filteredExamples[nextIndex];
+    const nextText = nextExample.code.map(token => token.text).join('');
+    
+    setCurrentExampleIndex(nextIndex);
+    setCurrentExample(nextExample);
+    setText(nextText);
+    setCharStates(nextText.split('').map((char): CharState => ({
+      char,
+      status: 'upcoming',
+      expected: char
+    })));
+    resetPractice();
+    setShowCompletionMessage(false);
+    setTransitionState('typing');
+  }, [currentExampleIndex, filteredExamples, resetPractice]);
 
   return (
     <div className="min-h-screen" style={{ background: vscodeDarkTheme.background }}>
@@ -695,9 +827,18 @@ export default function TypingPractice() {
                             소요 시간: {formatElapsedTime(elapsedTime)}
                           </p>
                         </div>
-                        <p className="text-sm mt-4 opacity-80" style={{ color: vscodeDarkTheme.foreground }}>
-                          잠시 후 다음 예제로 이동합니다...
-                        </p>
+                        <div className="mt-6 space-y-2">
+                          <Button
+                            onClick={handleNextExample}
+                            className="w-full"
+                            style={{
+                              backgroundColor: vscodeDarkTheme.lineNumberActive,
+                              color: vscodeDarkTheme.background
+                            }}
+                          >
+                            다음 예제로 이동 (Enter)
+                          </Button>
+                        </div>
                       </motion.div>
                     </motion.div>
                   )}
@@ -731,11 +872,16 @@ export default function TypingPractice() {
                 >
                   <div className="flex">
                     <LineNumbers text={text} getCurrentLine={getCurrentLine} />
-                    <p className="text-lg font-medium whitespace-pre-wrap leading-relaxed flex-1 pl-4"
+                    <div className="text-lg font-medium whitespace-pre-wrap leading-relaxed flex-1 pl-4"
                       style={{ color: vscodeDarkTheme.foreground }}
                     >
-                      {renderText()}
-                    </p>
+                      <div 
+                        className="font-mono whitespace-pre-wrap break-all relative"
+                        style={codeStyle}
+                      >
+                        {renderText()}
+                      </div>
+                    </div>
                   </div>
                   <textarea
                     ref={inputRef}
@@ -773,6 +919,16 @@ export default function TypingPractice() {
                 >
                   다시 시작
                 </Button>
+
+                {/* Settings Panel */}
+                <SettingsPanel
+                  fontSize={fontSize}
+                  onFontSizeChange={handleFontSizeChange}
+                  soundEnabled={soundEnabled}
+                  onSoundEnabledChange={handleSoundEnabledChange}
+                  volume={volume}
+                  onVolumeChange={handleVolumeChange}
+                />
               </CardContent>
             </Card>
           </motion.div>
