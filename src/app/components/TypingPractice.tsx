@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { vscodeDarkTheme } from '@/lib/editor/themes'
-import { CodeToken } from '@/types/typing'
-import { basicFunction, classExample, arrayExample, asyncExample } from '@/lib/examples'
+import { CodeToken, CodeExample, Difficulty } from '@/types/typing'
+import { examples } from '@/lib/examples'
 import { motion, AnimatePresence } from 'framer-motion';
 
 // 특수문자 변환 함수
@@ -37,16 +37,11 @@ interface CharState {
 }
 
 export default function TypingPractice() {
-  const examples = [
-    { id: 'basic', title: '기본 함수', code: basicFunction },
-    { id: 'class', title: '클래스 정의', code: classExample },
-    { id: 'array', title: '배열 메서드', code: arrayExample },
-    { id: 'async', title: '비동기 함수', code: asyncExample },
-  ];
-
   const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
   const [text, setText] = useState(examples[0].code.map(token => token.text).join(''));
   const [currentExample, setCurrentExample] = useState(examples[0]);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('beginner');
+  const [filteredExamples, setFilteredExamples] = useState(examples);
   const [userInput, setUserInput] = useState('')
   const [startTime, setStartTime] = useState<number | null>(null)
   const [endTime, setEndTime] = useState<number | null>(null)
@@ -67,6 +62,20 @@ export default function TypingPractice() {
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
   const ACCURACY_THRESHOLD = 90; // 정확도 기준값
   const [transitionState, setTransitionState] = useState<'typing' | 'completed' | 'transitioning'>('typing');
+
+  // Filter examples by difficulty
+  useEffect(() => {
+    const filtered = examples.filter(example => example.difficulty === selectedDifficulty);
+    setFilteredExamples(filtered);
+    // Reset to first example of new difficulty if current example doesn't match
+    if (currentExample.difficulty !== selectedDifficulty) {
+      const firstExample = filtered[0];
+      setCurrentExampleIndex(0);
+      setCurrentExample(firstExample);
+      setText(firstExample.code.map(token => token.text).join(''));
+      resetPractice();
+    }
+  }, [selectedDifficulty, currentExample.difficulty]);
 
   // Calculate words in code context
   const calculateWords = (input: string): number => {
@@ -559,13 +568,51 @@ export default function TypingPractice() {
               borderColor: '#404040' 
             }}
           >
-            <CardHeader>
-              <CardTitle 
-                className="text-2xl font-bold text-center"
+            <CardHeader className="space-y-2">
+              <div className="flex justify-between items-center">
+                <CardTitle 
+                  className="text-2xl font-bold"
+                  style={{ color: vscodeDarkTheme.foreground }}
+                >
+                  {currentExample.title}
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant={selectedDifficulty === 'beginner' ? 'default' : 'outline'}
+                    onClick={() => setSelectedDifficulty('beginner')}
+                    className="text-sm"
+                  >
+                    초급
+                  </Button>
+                  <Button
+                    variant={selectedDifficulty === 'intermediate' ? 'default' : 'outline'}
+                    onClick={() => setSelectedDifficulty('intermediate')}
+                    className="text-sm"
+                  >
+                    중급
+                  </Button>
+                </div>
+              </div>
+              <p 
+                className="text-sm opacity-80"
                 style={{ color: vscodeDarkTheme.foreground }}
               >
-                {currentExample.title}
-              </CardTitle>
+                {currentExample.description}
+              </p>
+              <div 
+                className="flex gap-2 flex-wrap"
+                style={{ color: vscodeDarkTheme.foreground }}
+              >
+                {currentExample.tags.map(tag => (
+                  <span
+                    key={tag}
+                    className="text-xs px-2 py-1 rounded-full"
+                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Completion message */}
@@ -667,8 +714,8 @@ export default function TypingPractice() {
                   <p className="text-sm opacity-80">평균 속도: {averageWPM} WPM</p>
                 </div>
                 <div className="flex flex-col">
-                  <p>키입력: {totalKeystrokes}</p>
-                  <p className="text-sm opacity-80">정확도: {correctKeystrokes}</p>
+                  <p>예상 시간: {currentExample.estimatedTime}초</p>
+                  <p className="text-sm opacity-80">경과: {formatElapsedTime(elapsedTime)}</p>
                 </div>
               </div>
               <Button 
