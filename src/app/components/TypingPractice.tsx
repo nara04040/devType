@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { vscodeDarkTheme } from '@/lib/editor/themes'
-import { CodeToken, CodeExample, Difficulty } from '@/types/typing'
+import { CodeToken, CodeExample, Difficulty, ProgrammingLanguage } from '@/types/typing'
 import { examples } from '@/lib/examples'
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -41,6 +41,7 @@ export default function TypingPractice() {
   const [text, setText] = useState(examples[0].code.map(token => token.text).join(''));
   const [currentExample, setCurrentExample] = useState(examples[0]);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('beginner');
+  const [selectedLanguage, setSelectedLanguage] = useState<ProgrammingLanguage>('javascript');
   const [filteredExamples, setFilteredExamples] = useState(examples);
   const [userInput, setUserInput] = useState('')
   const [startTime, setStartTime] = useState<number | null>(null)
@@ -63,19 +64,23 @@ export default function TypingPractice() {
   const ACCURACY_THRESHOLD = 90; // 정확도 기준값
   const [transitionState, setTransitionState] = useState<'typing' | 'completed' | 'transitioning'>('typing');
 
-  // Filter examples by difficulty
+  // Filter examples by difficulty and language
   useEffect(() => {
-    const filtered = examples.filter(example => example.difficulty === selectedDifficulty);
+    const filtered = examples.filter(example => 
+      example.difficulty === selectedDifficulty && 
+      example.language === selectedLanguage
+    );
     setFilteredExamples(filtered);
-    // Reset to first example of new difficulty if current example doesn't match
-    if (currentExample.difficulty !== selectedDifficulty) {
+    // Reset to first example of new filter if current example doesn't match
+    if (currentExample.difficulty !== selectedDifficulty || 
+        currentExample.language !== selectedLanguage) {
       const firstExample = filtered[0];
       setCurrentExampleIndex(0);
       setCurrentExample(firstExample);
       setText(firstExample.code.map(token => token.text).join(''));
       resetPractice();
     }
-  }, [selectedDifficulty, currentExample.difficulty]);
+  }, [selectedDifficulty, selectedLanguage, currentExample.difficulty, currentExample.language]);
 
   // Calculate words in code context
   const calculateWords = (input: string): number => {
@@ -523,8 +528,8 @@ export default function TypingPractice() {
     if (showCompletionMessage) {
       const transitionTimer = setTimeout(() => {
         setTransitionState('transitioning');
-        const nextIndex = (currentExampleIndex + 1) % examples.length;
-        const nextExample = examples[nextIndex];
+        const nextIndex = (currentExampleIndex + 1) % filteredExamples.length;
+        const nextExample = filteredExamples[nextIndex];
         const nextText = nextExample.code.map(token => token.text).join('');
         
         // Start transition
@@ -546,7 +551,7 @@ export default function TypingPractice() {
 
       return () => clearTimeout(transitionTimer);
     }
-  }, [showCompletionMessage, currentExampleIndex, examples]);
+  }, [showCompletionMessage, currentExampleIndex, filteredExamples]);
 
   return (
     <div 
@@ -576,21 +581,41 @@ export default function TypingPractice() {
                 >
                   {currentExample.title}
                 </CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant={selectedDifficulty === 'beginner' ? 'default' : 'outline'}
-                    onClick={() => setSelectedDifficulty('beginner')}
-                    className="text-sm"
-                  >
-                    초급
-                  </Button>
-                  <Button
-                    variant={selectedDifficulty === 'intermediate' ? 'default' : 'outline'}
-                    onClick={() => setSelectedDifficulty('intermediate')}
-                    className="text-sm"
-                  >
-                    중급
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  {/* Language selection */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={selectedLanguage === 'javascript' ? 'default' : 'outline'}
+                      onClick={() => setSelectedLanguage('javascript')}
+                      className="text-sm"
+                    >
+                      JavaScript
+                    </Button>
+                    <Button
+                      variant={selectedLanguage === 'python' ? 'default' : 'outline'}
+                      onClick={() => setSelectedLanguage('python')}
+                      className="text-sm"
+                    >
+                      Python
+                    </Button>
+                  </div>
+                  {/* Difficulty selection */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={selectedDifficulty === 'beginner' ? 'default' : 'outline'}
+                      onClick={() => setSelectedDifficulty('beginner')}
+                      className="text-sm"
+                    >
+                      초급
+                    </Button>
+                    <Button
+                      variant={selectedDifficulty === 'intermediate' ? 'default' : 'outline'}
+                      onClick={() => setSelectedDifficulty('intermediate')}
+                      className="text-sm"
+                    >
+                      중급
+                    </Button>
+                  </div>
                 </div>
               </div>
               <p 
@@ -662,7 +687,7 @@ export default function TypingPractice() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
                   <span style={{ color: vscodeDarkTheme.foreground }}>
-                    예제 {currentExampleIndex + 1}/{examples.length} - 진행률: {progress}%
+                    예제 {currentExampleIndex + 1}/{filteredExamples.length} - 진행률: {progress}%
                   </span>
                   <span style={{ color: vscodeDarkTheme.foreground }}>
                     작성 시간: {formatElapsedTime(elapsedTime)}

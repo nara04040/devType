@@ -1,6 +1,8 @@
+export type TokenType = 'keyword' | 'string' | 'number' | 'comment' | 'function' | 'type' | 'variable' | 'property' | 'operator' | 'plain';
+
 export interface CodeToken {
   text: string;
-  type: 'keyword' | 'string' | 'number' | 'comment' | 'function' | 'type' | 'variable' | 'property' | 'operator' | 'plain';
+  type: TokenType;
 }
 
 export type Difficulty = 'beginner' | 'intermediate';
@@ -13,6 +15,6 @@ export interface CodeExample {
   difficulty: Difficulty;
   description: string;
   tags: string[];
-  code: CodeToken[];
   estimatedTime: number;
+  code: CodeToken[];
 } 
