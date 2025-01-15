@@ -47,7 +47,7 @@ class SoundManager {
   playComplete() {
     if (!this.audioContext || !this.enabled) return;
     
-    const now = this.audioContext.currentTime;
+    // const now = this.audioContext.currentTime;
     
     // Play a simple melody
     [400, 500, 600].forEach((freq, i) => {

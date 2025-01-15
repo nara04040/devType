@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { vscodeDarkTheme } from '@/lib/editor/themes'
-import { CodeToken, CodeExample, Difficulty, ProgrammingLanguage, TypingStats } from '@/types/typing'
+import { CodeToken, Difficulty, ProgrammingLanguage, TypingStats } from '@/types/typing'
 import { examples } from '@/lib/examples'
 import { motion, AnimatePresence } from 'framer-motion';
 import ResultScreen from '@/components/ui/result/ResultScreen'
@@ -57,18 +57,15 @@ export default function TypingPractice() {
   const [averageWPM, setAverageWPM] = useState(0)
   const [realtimeWPM, setRealtimeWPM] = useState(0)
   const [progress, setProgress] = useState(0)
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [charStates, setCharStates] = useState<CharState[]>([])
   const wpmUpdateInterval = useRef<NodeJS.Timeout | null>(null)
   const timeInterval = useRef<NodeJS.Timeout | null>(null)
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
-  const ACCURACY_THRESHOLD = 90; // 정확도 기준값
-  const [transitionState, setTransitionState] = useState<'typing' | 'completed' | 'transitioning'>('typing');
-  const [showResult, setShowResult] = useState(false);
-  const [completedExamples, setCompletedExamples] = useState<TypingStats[]>([]);
+  const ACCURACY_THRESHOLD = 90;
   const [showResults, setShowResults] = useState(false);
+  const [completedExamples, setCompletedExamples] = useState<TypingStats[]>([]);
   const [fontSize, setFontSize] = useState<number>(16);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [volume, setVolume] = useState<number>(50);
@@ -231,7 +228,6 @@ export default function TypingPractice() {
     }
     if (checkCompletionCriteria()) {
       setEndTime(Date.now());
-      setTransitionState('completed');
       setShowCompletionMessage(true);
       const finalWPM = calculateRealtimeWPM();
       
@@ -356,7 +352,7 @@ export default function TypingPractice() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const resetPractice = () => {
+  const resetPractice = useCallback(() => {
     setUserInput('')
     setStartTime(null)
     setEndTime(null)
@@ -378,7 +374,7 @@ export default function TypingPractice() {
     if (inputRef.current) {
       inputRef.current.focus()
     }
-  }
+  }, [text]);
 
   const renderText = () => {
     let currentIndex = 0;
@@ -448,6 +444,24 @@ export default function TypingPractice() {
       return <span key={tokenIndex}>{tokenChars}</span>;
     });
   };
+
+  // 다음 예제로 이동하는 함수를 먼저 선언
+  const handleNextExample = useCallback(() => {
+    const nextIndex = (currentExampleIndex + 1) % filteredExamples.length;
+    const nextExample = filteredExamples[nextIndex];
+    const nextText = nextExample.code.map(token => token.text).join('');
+    
+    setCurrentExampleIndex(nextIndex);
+    setCurrentExample(nextExample);
+    setText(nextText);
+    setCharStates(nextText.split('').map((char): CharState => ({
+      char,
+      status: 'upcoming',
+      expected: char
+    })));
+    resetPractice();
+    setShowCompletionMessage(false);
+  }, [currentExampleIndex, filteredExamples, resetPractice]);
 
   // Tab 키 이벤트 처리
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -534,7 +548,7 @@ export default function TypingPractice() {
         }
       }
     }
-  }, [userInput, text, soundEnabled, handleExampleCompletion, showCompletionMessage]);
+  }, [userInput, text, soundEnabled, handleExampleCompletion, showCompletionMessage, handleNextExample]);
 
   // 줄 번호 렌더링 컴포넌트
   const LineNumbers = ({ text, getCurrentLine }: { text: string; getCurrentLine: () => number }) => {
@@ -590,15 +604,13 @@ export default function TypingPractice() {
   useEffect(() => {
     if (startTime && !endTime) {
       setProgress(calculateProgress());
-      setEstimatedTimeRemaining(calculateEstimatedTimeRemaining());
     }
-  }, [userInput, startTime, endTime, calculateProgress, calculateEstimatedTimeRemaining]);
+  }, [userInput, startTime, endTime, calculateProgress]);
 
   // Handle example transition
   useEffect(() => {
     if (showCompletionMessage) {
       const transitionTimer = setTimeout(() => {
-        setTransitionState('transitioning');
         const nextIndex = (currentExampleIndex + 1) % filteredExamples.length;
         const nextExample = filteredExamples[nextIndex];
         const nextText = nextExample.code.map(token => token.text).join('');
@@ -616,13 +628,12 @@ export default function TypingPractice() {
           })));
           resetPractice();
           setShowCompletionMessage(false);
-          setTransitionState('typing');
         }, 500);
       }, 2000);
 
       return () => clearTimeout(transitionTimer);
     }
-  }, [showCompletionMessage, currentExampleIndex, filteredExamples]);
+  }, [showCompletionMessage, currentExampleIndex, filteredExamples, resetPractice]);
 
   // Load settings from localStorage
   useEffect(() => {
@@ -676,25 +687,6 @@ export default function TypingPractice() {
       soundManager.setVolume(volume);
     }
   }, [soundEnabled, volume]);
-
-  // 다음 예제로 이동하는 함수
-  const handleNextExample = useCallback(() => {
-    const nextIndex = (currentExampleIndex + 1) % filteredExamples.length;
-    const nextExample = filteredExamples[nextIndex];
-    const nextText = nextExample.code.map(token => token.text).join('');
-    
-    setCurrentExampleIndex(nextIndex);
-    setCurrentExample(nextExample);
-    setText(nextText);
-    setCharStates(nextText.split('').map((char): CharState => ({
-      char,
-      status: 'upcoming',
-      expected: char
-    })));
-    resetPractice();
-    setShowCompletionMessage(false);
-    setTransitionState('typing');
-  }, [currentExampleIndex, filteredExamples, resetPractice]);
 
   return (
     <div className="min-h-screen" style={{ background: vscodeDarkTheme.background }}>
