@@ -4,9 +4,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { vscodeDarkTheme } from '@/lib/editor/themes'
-import { CodeToken, CodeExample, Difficulty, ProgrammingLanguage } from '@/types/typing'
+import { CodeToken, CodeExample, Difficulty, ProgrammingLanguage, TypingStats } from '@/types/typing'
 import { examples } from '@/lib/examples'
 import { motion, AnimatePresence } from 'framer-motion';
+import ResultScreen from '@/components/ui/result/ResultScreen'
 
 // 특수문자 변환 함수
 const renderSpecialChar = (char: string) => {
@@ -63,6 +64,9 @@ export default function TypingPractice() {
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
   const ACCURACY_THRESHOLD = 90; // 정확도 기준값
   const [transitionState, setTransitionState] = useState<'typing' | 'completed' | 'transitioning'>('typing');
+  const [showResult, setShowResult] = useState(false);
+  const [completedExamples, setCompletedExamples] = useState<TypingStats[]>([]);
+  const [showResults, setShowResults] = useState(false);
 
   // Filter examples by difficulty and language
   useEffect(() => {
@@ -224,26 +228,33 @@ export default function TypingPractice() {
       const finalWPM = calculateRealtimeWPM();
       
       // Save stats
-      const stats = {
+      const stats: TypingStats = {
         wpm: finalWPM,
         accuracy,
         time: elapsedTime,
         keystrokes: totalKeystrokes,
         correctKeystrokes,
         exampleId: currentExample.id,
+        timestamp: Date.now(),
       };
       
-      // Save WPM and stats to localStorage
-      const savedWPMs = JSON.parse(localStorage.getItem('typingWPMs') || '[]');
-      const savedStats = JSON.parse(localStorage.getItem('typingStats') || '[]');
-      savedWPMs.push(finalWPM);
-      savedStats.push(stats);
-      localStorage.setItem('typingWPMs', JSON.stringify(savedWPMs));
-      localStorage.setItem('typingStats', JSON.stringify(savedStats));
-      
-      // Update average
-      const average = savedWPMs.reduce((a: number, b: number) => a + b, 0) / savedWPMs.length;
-      setAverageWPM(Math.round(average));
+      setCompletedExamples(prev => [...prev, stats]);
+
+      // 7개 이상 완료시 결과 화면 표시
+      if (completedExamples.length + 1 >= 7) {
+        // 통계 데이터 저장
+        localStorage.setItem('typingStats', JSON.stringify([...completedExamples, stats]));
+        localStorage.setItem('typingWPMs', JSON.stringify([...completedExamples, stats].map(s => s.wpm)));
+        setShowResults(true);
+        return;
+      }
+
+      setShowCompletionMessage(true);
+      setTimeout(() => {
+        setShowCompletionMessage(false);
+        resetPractice();
+        setCurrentExampleIndex(prevIndex => (prevIndex + 1) % filteredExamples.length);
+      }, 3000);
     }
   }, [checkCompletionCriteria, calculateRealtimeWPM, accuracy, elapsedTime, totalKeystrokes, correctKeystrokes, currentExample.id]);
 
@@ -554,209 +565,219 @@ export default function TypingPractice() {
   }, [showCompletionMessage, currentExampleIndex, filteredExamples]);
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center" 
-      style={{ background: vscodeDarkTheme.background }}
-    >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentExample.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-3xl mx-auto"
-        >
-          <Card className="backdrop-filter backdrop-blur-lg border rounded-xl shadow-xl"
-            style={{ 
-              backgroundColor: 'rgba(30, 30, 30, 0.9)',
-              borderColor: '#404040' 
+    <div className="min-h-screen" style={{ background: vscodeDarkTheme.background }}>
+      <div className="container mx-auto min-h-screen flex items-center justify-center">
+        {showResults ? (
+          <ResultScreen
+            onRetry={() => {
+              setShowResults(false);
+              setCompletedExamples([]);
+              resetPractice();
+              setCurrentExampleIndex(0);
             }}
+            currentExample={currentExample}
+            completedExamples={completedExamples}
+          />
+        ) : (
+          <motion.div
+            key={currentExample.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+            className="w-full max-w-3xl"
           >
-            <CardHeader className="space-y-2">
-              <div className="flex justify-between items-center">
-                <CardTitle 
-                  className="text-2xl font-bold"
-                  style={{ color: vscodeDarkTheme.foreground }}
-                >
-                  {currentExample.title}
-                </CardTitle>
-                <div className="flex flex-col gap-2">
-                  {/* Language selection */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant={selectedLanguage === 'javascript' ? 'default' : 'outline'}
-                      onClick={() => setSelectedLanguage('javascript')}
-                      className="text-sm"
-                    >
-                      JavaScript
-                    </Button>
-                    <Button
-                      variant={selectedLanguage === 'python' ? 'default' : 'outline'}
-                      onClick={() => setSelectedLanguage('python')}
-                      className="text-sm"
-                    >
-                      Python
-                    </Button>
-                  </div>
-                  {/* Difficulty selection */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant={selectedDifficulty === 'beginner' ? 'default' : 'outline'}
-                      onClick={() => setSelectedDifficulty('beginner')}
-                      className="text-sm"
-                    >
-                      초급
-                    </Button>
-                    <Button
-                      variant={selectedDifficulty === 'intermediate' ? 'default' : 'outline'}
-                      onClick={() => setSelectedDifficulty('intermediate')}
-                      className="text-sm"
-                    >
-                      중급
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <p 
-                className="text-sm opacity-80"
-                style={{ color: vscodeDarkTheme.foreground }}
-              >
-                {currentExample.description}
-              </p>
-              <div 
-                className="flex gap-2 flex-wrap"
-                style={{ color: vscodeDarkTheme.foreground }}
-              >
-                {currentExample.tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="text-xs px-2 py-1 rounded-full"
-                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Completion message */}
-              <AnimatePresence>
-                {showCompletionMessage && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10 rounded-xl"
-                    style={{ backdropFilter: 'blur(4px)' }}
-                  >
-                    <motion.div
-                      initial={{ y: 20 }}
-                      animate={{ y: 0 }}
-                      className="text-center p-6 rounded-lg bg-opacity-90"
-                      style={{ backgroundColor: vscodeDarkTheme.background }}
-                    >
-                      <motion.h3
-                        initial={{ scale: 0.9 }}
-                        animate={{ scale: 1 }}
-                        className="text-2xl font-bold mb-4"
-                        style={{ color: vscodeDarkTheme.lineNumberActive }}
-                      >
-                        🎉 예제 완료!
-                      </motion.h3>
-                      <div className="space-y-2">
-                        <p style={{ color: vscodeDarkTheme.foreground }}>
-                          정확도: {accuracy}% • 속도: {speed} WPM
-                        </p>
-                        <p style={{ color: vscodeDarkTheme.foreground }}>
-                          키입력: {totalKeystrokes} • 정확: {correctKeystrokes}
-                        </p>
-                        <p style={{ color: vscodeDarkTheme.foreground }}>
-                          소요 시간: {formatElapsedTime(elapsedTime)}
-                        </p>
-                      </div>
-                      <p className="text-sm mt-4 opacity-80" style={{ color: vscodeDarkTheme.foreground }}>
-                        잠시 후 다음 예제로 이동합니다...
-                      </p>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Progress bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span style={{ color: vscodeDarkTheme.foreground }}>
-                    예제 {currentExampleIndex + 1}/{filteredExamples.length} - 진행률: {progress}%
-                  </span>
-                  <span style={{ color: vscodeDarkTheme.foreground }}>
-                    작성 시간: {formatElapsedTime(elapsedTime)}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-opacity-20 rounded-full overflow-hidden"
-                  style={{ backgroundColor: vscodeDarkTheme.foreground }}
-                >
-                  <div
-                    className="h-full transition-all duration-300 ease-in-out rounded-full"
-                    style={{
-                      width: `${progress}%`,
-                      backgroundColor: vscodeDarkTheme.lineNumberActive
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-md relative"
-                style={{ backgroundColor: 'rgba(47, 51, 55, 0.5)' }}
-              >
-                <div className="flex">
-                  <LineNumbers text={text} getCurrentLine={getCurrentLine} />
-                  <p className="text-lg font-medium whitespace-pre-wrap leading-relaxed flex-1 pl-4"
+            <Card className="backdrop-filter backdrop-blur-lg border rounded-xl shadow-xl"
+              style={{ 
+                backgroundColor: 'rgba(30, 30, 30, 0.9)',
+                borderColor: '#404040' 
+              }}
+            >
+              <CardHeader className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle 
+                    className="text-2xl font-bold"
                     style={{ color: vscodeDarkTheme.foreground }}
                   >
-                    {renderText()}
-                  </p>
+                    {currentExample.title}
+                  </CardTitle>
+                  <div className="flex flex-col gap-2">
+                    {/* Language selection */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant={selectedLanguage === 'javascript' ? 'default' : 'outline'}
+                        onClick={() => setSelectedLanguage('javascript')}
+                        className="text-sm"
+                      >
+                        JavaScript
+                      </Button>
+                      <Button
+                        variant={selectedLanguage === 'python' ? 'default' : 'outline'}
+                        onClick={() => setSelectedLanguage('python')}
+                        className="text-sm"
+                      >
+                        Python
+                      </Button>
+                    </div>
+                    {/* Difficulty selection */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant={selectedDifficulty === 'beginner' ? 'default' : 'outline'}
+                        onClick={() => setSelectedDifficulty('beginner')}
+                        className="text-sm"
+                      >
+                        초급
+                      </Button>
+                      <Button
+                        variant={selectedDifficulty === 'intermediate' ? 'default' : 'outline'}
+                        onClick={() => setSelectedDifficulty('intermediate')}
+                        className="text-sm"
+                      >
+                        중급
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <textarea
-                  ref={inputRef}
-                  value={userInput}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  className="absolute top-0 left-0 w-full h-full opacity-0 cursor-default resize-none"
-                  autoFocus
-                  spellCheck={false}
-                />
-              </div>
-              <div className="flex justify-between items-center flex-wrap gap-2"
-                style={{ color: vscodeDarkTheme.foreground }}
-              >
-                <div className="flex flex-col">
-                  <p>전체 정확도: {accuracy}%</p>
-                  <p className="text-sm opacity-80">현재 라인: {realtimeAccuracy}%</p>
+                <p 
+                  className="text-sm opacity-80"
+                  style={{ color: vscodeDarkTheme.foreground }}
+                >
+                  {currentExample.description}
+                </p>
+                <div 
+                  className="flex gap-2 flex-wrap"
+                  style={{ color: vscodeDarkTheme.foreground }}
+                >
+                  {currentExample.tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="text-xs px-2 py-1 rounded-full"
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
-                <div className="flex flex-col">
-                  <p>현재 속도: {endTime ? speed : realtimeWPM} WPM</p>
-                  <p className="text-sm opacity-80">평균 속도: {averageWPM} WPM</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Completion message */}
+                <AnimatePresence>
+                  {showCompletionMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10 rounded-xl"
+                      style={{ backdropFilter: 'blur(4px)' }}
+                    >
+                      <motion.div
+                        initial={{ y: 20 }}
+                        animate={{ y: 0 }}
+                        className="text-center p-6 rounded-lg bg-opacity-90"
+                        style={{ backgroundColor: vscodeDarkTheme.background }}
+                      >
+                        <motion.h3
+                          initial={{ scale: 0.9 }}
+                          animate={{ scale: 1 }}
+                          className="text-2xl font-bold mb-4"
+                          style={{ color: vscodeDarkTheme.lineNumberActive }}
+                        >
+                          🎉 예제 완료!
+                        </motion.h3>
+                        <div className="space-y-2">
+                          <p style={{ color: vscodeDarkTheme.foreground }}>
+                            정확도: {accuracy}% • 속도: {speed} WPM
+                          </p>
+                          <p style={{ color: vscodeDarkTheme.foreground }}>
+                            키입력: {totalKeystrokes} • 정확: {correctKeystrokes}
+                          </p>
+                          <p style={{ color: vscodeDarkTheme.foreground }}>
+                            소요 시간: {formatElapsedTime(elapsedTime)}
+                          </p>
+                        </div>
+                        <p className="text-sm mt-4 opacity-80" style={{ color: vscodeDarkTheme.foreground }}>
+                          잠시 후 다음 예제로 이동합니다...
+                        </p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Progress bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span style={{ color: vscodeDarkTheme.foreground }}>
+                      예제 {currentExampleIndex + 1}/{filteredExamples.length} - 진행률: {progress}%
+                    </span>
+                    <span style={{ color: vscodeDarkTheme.foreground }}>
+                      작성 시간: {formatElapsedTime(elapsedTime)}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-opacity-20 rounded-full overflow-hidden"
+                    style={{ backgroundColor: vscodeDarkTheme.foreground }}
+                  >
+                    <div
+                      className="h-full transition-all duration-300 ease-in-out rounded-full"
+                      style={{
+                        width: `${progress}%`,
+                        backgroundColor: vscodeDarkTheme.lineNumberActive
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <p>예상 시간: {currentExample.estimatedTime}초</p>
-                  <p className="text-sm opacity-80">경과: {formatElapsedTime(elapsedTime)}</p>
+
+                <div className="p-4 rounded-md relative"
+                  style={{ backgroundColor: 'rgba(47, 51, 55, 0.5)' }}
+                >
+                  <div className="flex">
+                    <LineNumbers text={text} getCurrentLine={getCurrentLine} />
+                    <p className="text-lg font-medium whitespace-pre-wrap leading-relaxed flex-1 pl-4"
+                      style={{ color: vscodeDarkTheme.foreground }}
+                    >
+                      {renderText()}
+                    </p>
+                  </div>
+                  <textarea
+                    ref={inputRef}
+                    value={userInput}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    className="absolute top-0 left-0 w-full h-full opacity-0 cursor-default resize-none"
+                    autoFocus
+                    spellCheck={false}
+                  />
                 </div>
-              </div>
-              <Button 
-                onClick={resetPractice} 
-                className="w-full hover:bg-opacity-70"
-                style={{ 
-                  backgroundColor: vscodeDarkTheme.lineHighlight,
-                  color: vscodeDarkTheme.foreground 
-                }}
-              >
-                다시 시작
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </AnimatePresence>
+                <div className="flex justify-between items-center flex-wrap gap-2"
+                  style={{ color: vscodeDarkTheme.foreground }}
+                >
+                  <div className="flex flex-col">
+                    <p>전체 정확도: {accuracy}%</p>
+                    <p className="text-sm opacity-80">현재 라인: {realtimeAccuracy}%</p>
+                  </div>
+                  <div className="flex flex-col">
+                    <p>현재 속도: {endTime ? speed : realtimeWPM} WPM</p>
+                    <p className="text-sm opacity-80">평균 속도: {averageWPM} WPM</p>
+                  </div>
+                  <div className="flex flex-col">
+                    <p>예상 시간: {currentExample.estimatedTime}초</p>
+                    <p className="text-sm opacity-80">경과: {formatElapsedTime(elapsedTime)}</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={resetPractice} 
+                  className="w-full hover:bg-opacity-70"
+                  style={{ 
+                    backgroundColor: vscodeDarkTheme.lineHighlight,
+                    color: vscodeDarkTheme.foreground 
+                  }}
+                >
+                  다시 시작
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </div>
     </div>
   )
 }
