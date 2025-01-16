@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { vscodeDarkTheme } from '@/lib/editor/themes'
 import { TypingResult, TypingStats, CodeExample } from '@/types/typing'
 import BasicStats from './BasicStats'
+import ResultAd from '@/components/ads/ResultAd'
 
 interface ResultScreenProps {
   onRetry: () => void;
@@ -57,6 +58,7 @@ export default function ResultScreen({ onRetry, currentExample, completedExample
       className="w-full max-w-4xl mx-auto p-4 space-y-4"
     >
       <BasicStats result={result} />
+      <ResultAd />
       
       <Card className="w-full p-4" style={{ backgroundColor: vscodeDarkTheme.background }}>
         <div className="flex justify-between items-center">
