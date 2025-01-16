@@ -11,6 +11,7 @@ import ResultScreen from '@/components/ui/result/ResultScreen'
 import SettingsPanel from '@/components/ui/settings/SettingsPanel'
 import { soundManager } from '@/lib/utils/sound';
 import { advancedJavaScriptExamples } from '@/lib/examples/javascript/advanced'
+import { advancedPythonExamples } from '@/lib/examples/python/advanced'
 
 // 특수문자 변환 함수
 const renderSpecialChar = (char: string) => {
@@ -75,7 +76,10 @@ export default function TypingPractice() {
   useEffect(() => {
     const filtered = [
       ...examples,
-      ...(selectedDifficulty === 'advanced' ? advancedJavaScriptExamples : [])
+      ...(selectedDifficulty === 'advanced' ? 
+        (selectedLanguage === 'javascript' ? advancedJavaScriptExamples : advancedPythonExamples) 
+        : []
+      )
     ].filter(example => 
       example.difficulty === selectedDifficulty && 
       example.language === selectedLanguage
