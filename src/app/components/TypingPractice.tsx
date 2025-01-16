@@ -946,7 +946,7 @@ export default function TypingPractice() {
                 </CardContent>
               </Card>
             </motion.div>
-            <BottomBanner />
+            {/* <BottomBanner /> */}
           </>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import '@/types/adsense';
+import { vscodeDarkTheme } from '@/lib/editor/themes';
 
 const ADSENSE_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const ADSENSE_SLOT_ID = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID;
@@ -22,7 +23,8 @@ export default function BottomBanner() {
   if (!ADSENSE_ID || !ADSENSE_SLOT_ID) return null;
 
   return (
-    <div className="w-full max-w-4xl mx-auto mt-4 overflow-hidden">
+    <div className="w-full max-w-4xl mx-auto mt-4 overflow-hidden"
+    style={{ background: vscodeDarkTheme.background }}>
       <ins
         ref={adRef}
         className="adsbygoogle"
@@ -34,4 +36,4 @@ export default function BottomBanner() {
       />
     </div>
   );
-} 
+}
