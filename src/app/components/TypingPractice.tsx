@@ -12,7 +12,7 @@ import SettingsPanel from '@/components/ui/settings/SettingsPanel'
 import { soundManager } from '@/lib/utils/sound';
 import { advancedJavaScriptExamples } from '@/lib/examples/javascript/advanced'
 import { advancedPythonExamples } from '@/lib/examples/python/advanced'
-import BottomBanner from '@/components/ads/BottomBanner'
+// import BottomBanner from '@/components/ads/BottomBanner'
 
 // 특수문자 변환 함수
 const renderSpecialChar = (char: string) => {
