@@ -24,11 +24,11 @@ export default function BottomBanner() {
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-4 overflow-hidden"
-    style={{ background: vscodeDarkTheme.background }}>
+    style={{ background: vscodeDarkTheme.background, padding: '1px', borderRadius: '4px'}}>
       <ins
         ref={adRef}
         className="adsbygoogle"
-        style={{ display: 'block' }}
+        style={{ display: 'block', backgroundColor: vscodeDarkTheme.background }}
         data-ad-client={ADSENSE_ID}
         data-ad-slot={ADSENSE_SLOT_ID}
         data-ad-format="auto"

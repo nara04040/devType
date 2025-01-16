@@ -701,7 +701,7 @@ export default function TypingPractice() {
   }, [soundEnabled, volume]);
 
   return (
-    <div className="min-h-screen" style={{ background: vscodeDarkTheme.background }}>
+    <div className="h-full" style={{ background: vscodeDarkTheme.background }}>
       <div className="container mx-auto min-h-screen flex flex-col items-center justify-center">
         {showResults ? (
           <ResultScreen
