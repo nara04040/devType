@@ -66,7 +66,7 @@ export default function TypingPractice() {
   const wpmUpdateInterval = useRef<NodeJS.Timeout | null>(null)
   const timeInterval = useRef<NodeJS.Timeout | null>(null)
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
-  const ACCURACY_THRESHOLD = 90;
+  // const ACCURACY_THRESHOLD = 90;
   const [showResults, setShowResults] = useState(false);
   const [completedExamples, setCompletedExamples] = useState<TypingStats[]>([]);
   const [fontSize, setFontSize] = useState<number>(16);
@@ -223,14 +223,14 @@ export default function TypingPractice() {
   }, [userInput, startTime, endTime, updateRealtimeAccuracy]);
 
   // Check completion criteria
-  const checkCompletionCriteria = useCallback(() => {
-    // 모든 텍스트가 입력되었는지 확인
-    const isTextComplete = userInput === text;
-    // 정확도가 기준값을 넘는지 확인
-    const isAccuracyMet = accuracy >= ACCURACY_THRESHOLD;
+  // const checkCompletionCriteria = useCallback(() => {
+  //   // 모든 텍스트가 입력되었는지 확인
+  //   const isTextComplete = userInput === text;
+  //   // 정확도가 기준값을 넘는지 확인
+  //   const isAccuracyMet = accuracy >= ACCURACY_THRESHOLD;
     
-    return isTextComplete && isAccuracyMet;
-  }, [userInput, text, accuracy]);
+  //   return isTextComplete && isAccuracyMet;
+  // }, [userInput, text, accuracy]);
 
   // Handle example completion
   const handleExampleCompletion = useCallback(() => {

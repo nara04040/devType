@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-
-declare global {
-  interface Window {
-    adsbygoogle: any[];
-  }
-}
+import '@/types/adsense';
 
 const ADSENSE_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const ADSENSE_SLOT_ID = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID;

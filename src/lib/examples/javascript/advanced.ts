@@ -1,4 +1,4 @@
-import { CodeExample, Difficulty, ProgrammingLanguage, TokenType } from '@/types/typing';
+import { CodeExample, Difficulty, ProgrammingLanguage} from '@/types/typing';
 
 export const advancedJavaScriptExamples: CodeExample[] = [
   {
