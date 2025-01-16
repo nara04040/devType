@@ -67,7 +67,7 @@ export default function TypingPractice() {
   const [showResults, setShowResults] = useState(false);
   const [completedExamples, setCompletedExamples] = useState<TypingStats[]>([]);
   const [fontSize, setFontSize] = useState<number>(16);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(50);
 
   // Filter examples by difficulty and language
@@ -226,7 +226,9 @@ export default function TypingPractice() {
     if (soundManager && soundEnabled) {
       soundManager.playComplete();
     }
-    if (checkCompletionCriteria()) {
+
+    // 텍스트 길이가 같을 때만 완료 처리 (정확도와 관계없이)
+    if (userInput.length === text.length) {
       setEndTime(Date.now());
       setShowCompletionMessage(true);
       const finalWPM = calculateRealtimeWPM();
@@ -246,7 +248,6 @@ export default function TypingPractice() {
 
       // 7개 이상 완료시 결과 화면 표시
       if (completedExamples.length + 1 >= 7) {
-        // 통계 데이터 저장
         localStorage.setItem('typingStats', JSON.stringify([...completedExamples, stats]));
         localStorage.setItem('typingWPMs', JSON.stringify([...completedExamples, stats].map(s => s.wpm)));
         setShowResults(true);
@@ -255,7 +256,7 @@ export default function TypingPractice() {
 
       setShowCompletionMessage(true);
     }
-  }, [checkCompletionCriteria, calculateRealtimeWPM, accuracy, elapsedTime, totalKeystrokes, correctKeystrokes, currentExample.id, soundEnabled, completedExamples]);
+  }, [text.length, userInput.length, calculateRealtimeWPM, accuracy, elapsedTime, totalKeystrokes, correctKeystrokes, currentExample.id, soundEnabled, completedExamples]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // 완료 메시지가 표시 중일 때는 입력 무시
@@ -408,13 +409,13 @@ export default function TypingPractice() {
         }
         
         if (!charState || charState.status === 'upcoming') {
-          return (
+        return (
             <span
               key={`${tokenIndex}-${charIndex}`}
               style={{ color: vscodeDarkTheme.upcoming }}
             >
               {renderSpecialChar(char)}
-            </span>
+          </span>
           );
         }
 
@@ -482,8 +483,8 @@ export default function TypingPractice() {
 
     if (event.key === 'Enter') {
       event.preventDefault();
-      // 예제가 완료되었고 정확도가 기준을 충족하면 완료 처리
-      if (userInput === text) {
+      // 텍스트 길이가 같으면 완료 처리 (정확도와 관계없이)
+      if (userInput.length === text.length) {
         handleExampleCompletion();
         return;
       }
@@ -709,7 +710,7 @@ export default function TypingPractice() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
-            className="w-full max-w-3xl"
+            className="w-full max-w-4xl"
           >
             <Card className="backdrop-filter backdrop-blur-lg border rounded-xl shadow-xl"
               style={{ 
@@ -782,8 +783,8 @@ export default function TypingPractice() {
                     </span>
                   ))}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        </CardHeader>
+        <CardContent className="space-y-4">
                 {/* Completion message */}
                 <AnimatePresence>
                   {showCompletionMessage && (
@@ -871,20 +872,20 @@ export default function TypingPractice() {
                         className="font-mono whitespace-pre-wrap break-all relative"
                         style={codeStyle}
                       >
-                        {renderText()}
+              {renderText()}
                       </div>
                     </div>
                   </div>
                   <textarea
-                    ref={inputRef}
-                    value={userInput}
-                    onChange={handleInputChange}
+              ref={inputRef}
+              value={userInput}
+              onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     className="absolute top-0 left-0 w-full h-full opacity-0 cursor-default resize-none"
-                    autoFocus
+              autoFocus
                     spellCheck={false}
-                  />
-                </div>
+            />
+          </div>
                 <div className="flex justify-between items-center flex-wrap gap-2"
                   style={{ color: vscodeDarkTheme.foreground }}
                 >
@@ -900,17 +901,17 @@ export default function TypingPractice() {
                     <p>예상 시간: {currentExample.estimatedTime}초</p>
                     <p className="text-sm opacity-80">경과: {formatElapsedTime(elapsedTime)}</p>
                   </div>
-                </div>
-                <Button 
-                  onClick={resetPractice} 
+          </div>
+          <Button 
+            onClick={resetPractice} 
                   className="w-full hover:bg-opacity-70"
                   style={{ 
                     backgroundColor: vscodeDarkTheme.lineHighlight,
                     color: vscodeDarkTheme.foreground 
                   }}
-                >
-                  다시 시작
-                </Button>
+          >
+            다시 시작
+          </Button>
 
                 {/* Settings Panel */}
                 <SettingsPanel
@@ -921,8 +922,8 @@ export default function TypingPractice() {
                   volume={volume}
                   onVolumeChange={handleVolumeChange}
                 />
-              </CardContent>
-            </Card>
+        </CardContent>
+      </Card>
           </motion.div>
         )}
       </div>
