@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ResultScreen from '@/components/ui/result/ResultScreen'
 import SettingsPanel from '@/components/ui/settings/SettingsPanel'
 import { soundManager } from '@/lib/utils/sound';
+import { advancedJavaScriptExamples } from '@/lib/examples/javascript/advanced'
 
 // 특수문자 변환 함수
 const renderSpecialChar = (char: string) => {
@@ -72,11 +73,16 @@ export default function TypingPractice() {
 
   // Filter examples by difficulty and language
   useEffect(() => {
-    const filtered = examples.filter(example => 
+    const filtered = [
+      ...examples,
+      ...(selectedDifficulty === 'advanced' ? advancedJavaScriptExamples : [])
+    ].filter(example => 
       example.difficulty === selectedDifficulty && 
       example.language === selectedLanguage
     );
+    
     setFilteredExamples(filtered);
+    
     // Reset to first example of new filter if current example doesn't match
     if (currentExample.difficulty !== selectedDifficulty || 
         currentExample.language !== selectedLanguage) {
@@ -759,6 +765,13 @@ export default function TypingPractice() {
                         className="text-sm"
                       >
                         중급
+                      </Button>
+                      <Button
+                        variant={selectedDifficulty === 'advanced' ? 'default' : 'outline'}
+                        onClick={() => setSelectedDifficulty('advanced')}
+                        className="text-sm"
+                      >
+                        고급
                       </Button>
                     </div>
                   </div>

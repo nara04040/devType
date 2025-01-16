@@ -5,7 +5,7 @@ export interface CodeToken {
   type: TokenType;
 }
 
-export type Difficulty = 'beginner' | 'intermediate';
+export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 export type ProgrammingLanguage = 'javascript' | 'python';
 
 export interface CodeExample {
