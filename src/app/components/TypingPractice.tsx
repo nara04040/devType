@@ -12,7 +12,7 @@ import SettingsPanel from '@/components/ui/settings/SettingsPanel'
 import { soundManager } from '@/lib/utils/sound';
 import { advancedJavaScriptExamples } from '@/lib/examples/javascript/advanced'
 import { advancedPythonExamples } from '@/lib/examples/python/advanced'
-// import BottomBanner from '@/components/ads/BottomBanner'
+import BottomBanner from '@/components/ads/BottomBanner'
 
 // 특수문자 변환 함수
 const renderSpecialChar = (char: string) => {
@@ -701,7 +701,7 @@ export default function TypingPractice() {
   }, [soundEnabled, volume]);
 
   return (
-    <div className="h-full" style={{ background: vscodeDarkTheme.background }}>
+    <div className="h-full py-9" style={{ background: vscodeDarkTheme.background }}>
       <div className="container mx-auto min-h-screen flex flex-col items-center justify-center">
         {showResults ? (
           <ResultScreen
@@ -946,7 +946,7 @@ export default function TypingPractice() {
                 </CardContent>
               </Card>
             </motion.div>
-            {/* <BottomBanner /> */}
+            <BottomBanner />
           </>
         )}
       </div>
